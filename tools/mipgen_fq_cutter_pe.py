@@ -3,16 +3,22 @@
 
 import sys
 import re
-import gzip
+from subprocess import Popen, PIPE
 from optparse import OptionParser
 
 
-def open_file(filename):
-    """Opens a file, optionally gzipped"""
+def fastq_reader(filename):
+    """Yields a read from a fastq file, optionally gzipped"""
     if options.gzip_input or re.search(".gz$", filename):
-        return gzip.open(filename, 'rb')
+        f = Popen('gzcat ' + filename, shell=True, stdout=PIPE).stdout
     else:
-        return open(filename, 'rb')
+        f = open(filename, 'r')
+    for line in f:
+        qname = line.rstrip("\n")
+        seq = f.next().rstrip("\n")
+        sep = f.next().rstrip("\n")
+        qual = f.next().rstrip("\n")
+        yield [qname, seq, sep, qual]
 
 parser = OptionParser("%prog read_1.fq read_2.fq [options]")
 parser.add_option("-o", "--output_prefix", dest="output_prefix", type="str",
@@ -67,10 +73,10 @@ if options.molecular_tag:
     molecular_tag_specs = [int(entry) for entry in molecular_tag_specs]
 
 # open files
-first_in = open_file(sys.argv[1])
-second_in = open_file(sys.argv[2])
+first_in = fastq_reader(sys.argv[1])
+second_in = fastq_reader(sys.argv[2])
 if options.index_file:
-    i_in = open_file(options.index_file)
+    i_in = fastq_reader(options.index_file)
 
 if options.output_prefix:
     first_outfq = options.output_prefix + ".r1.indexed.fq"
@@ -84,15 +90,9 @@ else:
 with open(first_outfq, 'w') as first_out:
     with open(second_outfq, 'w') as second_out:
         while(1):
-            index_block = []
-            first_block = []
-            second_block = []
             try:
-                for i in range(4):
-                    first_line = first_in.next()
-                    first_block.append(first_line)
-                    second_line = second_in.next()
-                    second_block.append(second_line)
+                first_block = first_in.next()
+                second_block = second_in.next()
             except StopIteration:
                 # end of file
                 break
@@ -108,20 +108,17 @@ with open(first_outfq, 'w') as first_out:
             else:
                 first_block[0] = second_block[0]
 
-            barcode_in_first_header = re.search("#([ATGCN]+)(-[ATGCN]*)?$", first_block[0])
-            barcode_in_second_header = re.search("#([ATGCN]+)(-[ATGCN]*)?$", second_block[0])
-
             if options.index_file:
-                for i in range(4):
-                    index_line = i_in.next()
-                    index_block.append(index_line)
-                barcode = index_block[1].rstrip()
-            elif (barcode_in_first_header
-                  and barcode_in_second_header
-                  and barcode_in_first_header.group(1) == barcode_in_second_header.group(1)):
-                barcode = barcode_in_first_header.group(1)
+                index_block = i_in.next()
+                barcode = index_block[1]
             else:
-                barcode = "N"
+                barcode_in_first_header = re.search("#([ATGCN]+)(-[ATGCN]*)?$", first_block[0])
+                barcode_in_second_header = re.search("#([ATGCN]+)(-[ATGCN]*)?$", second_block[0])
+                if (barcode_in_first_header and barcode_in_second_header
+                   and barcode_in_first_header.group(1) == barcode_in_second_header.group(1)):
+                    barcode = barcode_in_first_header.group(1)
+                else:
+                    barcode = "N"
 
             if (options.index_file and options.index_length):
                 barcode = barcode[:options.index_length]
@@ -133,21 +130,22 @@ with open(first_outfq, 'w') as first_out:
                     and barcode_in_second_header):
                 pass
             else:
-                first_block[0] = first_block[0].replace("\n", "#" + barcode + "\n")
+                first_block[0] += "#" + barcode
                 first_block[0] = first_block[0].replace(" ", "_")
-                second_block[0] = second_block[0].replace("\n", "#" + barcode + "\n")
+                second_block[0] += "#" + barcode
                 second_block[0] = second_block[0].replace(" ", "_")
-                tag_in_first_header = re.search("#[ATGCN]+-[ATGCN]+$", first_block[0])
-                tag_in_second_header = re.search("#[ATGCN]+-[ATGCN]+$", second_block[0])
+                if options.molecular_tag:
+                    tag_in_first_header = re.search("#[ATGCN]+-[ATGCN]+$", first_block[0])
+                    tag_in_second_header = re.search("#[ATGCN]+-[ATGCN]+$", second_block[0])
 
             if options.molecular_tag:
                 if not tag_in_first_header and not tag_in_second_header:
                     tag = first_block[1][:molecular_tag_specs[0]] \
                         + second_block[1][:molecular_tag_specs[1]]
-                    first_block[0] = first_block[0].replace("\n", "-" + tag + "\n")
+                    first_block[0] += "-" + tag
                     first_block[1] = first_block[1][molecular_tag_specs[0]:]
                     first_block[3] = first_block[3][molecular_tag_specs[0]:]
-                    second_block[0] = second_block[0].replace("\n", "-" + tag + "\n")
+                    second_block[0] += "-" + tag
                     second_block[1] = second_block[1][molecular_tag_specs[1]:]
                     second_block[3] = second_block[3][molecular_tag_specs[1]:]
                 elif not (tag_in_first_header and tag_in_second_header):
@@ -157,32 +155,32 @@ with open(first_outfq, 'w') as first_out:
                     pass  # do nothing
 
             if options.truncated_read_length:
-                first_block[1] = first_block[1][:options.truncated_read_length].rstrip() + "\n"
-                first_block[3] = first_block[3][:options.truncated_read_length].rstrip() + "\n"
-                second_block[1] = second_block[1][:options.truncated_read_length].rstrip() + "\n"
-                second_block[3] = second_block[3][:options.truncated_read_length].rstrip() + "\n"
+                first_block[1] = first_block[1][:options.truncated_read_length]
+                first_block[3] = first_block[3][:options.truncated_read_length]
+                second_block[1] = second_block[1][:options.truncated_read_length]
+                second_block[3] = second_block[3][:options.truncated_read_length]
 
             if options.partial_discard:
                 match = re.search("#+$", first_block[3])
                 if match:
-                    first_block[1] = first_block[1][0:match.start()] + "\n"
-                    first_block[3] = first_block[3][0:match.start()] + "\n"
+                    first_block[1] = first_block[1][0:match.start()]
+                    first_block[3] = first_block[3][0:match.start()]
                 match = re.search("#+$", second_block[3])
                 if match:
-                    second_block[1] = second_block[1][0:match.start()] + "\n"
-                    second_block[3] = second_block[3][0:match.start()] + "\n"
+                    second_block[1] = second_block[1][0:match.start()]
+                    second_block[3] = second_block[3][0:match.start()]
 
             if options.skip_length:
-                first_block[1] = first_block[1][options.skip_length:].rstrip() + "\n"
-                first_block[3] = first_block[3][options.skip_length:].rstrip() + "\n"
-                second_block[1] = second_block[1][options.skip_length:].rstrip() + "\n"
-                second_block[3] = second_block[3][options.skip_length:].rstrip() + "\n"
+                first_block[1] = first_block[1][options.skip_length:]
+                first_block[3] = first_block[3][options.skip_length:]
+                second_block[1] = second_block[1][options.skip_length:]
+                second_block[3] = second_block[3][options.skip_length:]
 
             # write output
-            for line in first_block:
-                first_out.write(line)
-            for line in second_block:
-                second_out.write(line)
+            first_out.write("%s\n%s\n+\n%s\n" %
+                            (first_block[0], first_block[1], first_block[3]))
+            second_out.write("%s\n%s\n+\n%s\n" %
+                             (second_block[0], second_block[1], second_block[3]))
 
 first_in.close()
 second_in.close()
