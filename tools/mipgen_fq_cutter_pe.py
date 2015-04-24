@@ -6,6 +6,14 @@ import re
 import gzip
 from optparse import OptionParser
 
+
+def open_file(filename):
+    """Opens a file, optionally gzipped"""
+    if options.gzip_input or re.search(".gz$", filename):
+        return gzip.open(filename, 'rb')
+    else:
+        return open(filename, 'rb')
+
 parser = OptionParser("%prog read_1.fq read_2.fq [options]")
 parser.add_option("-o", "--output_prefix", dest="output_prefix", type="str",
                   help="directs output to given path")
@@ -58,15 +66,11 @@ if options.molecular_tag:
     molecular_tag_specs = options.molecular_tag.split(",")
     molecular_tag_specs = [int(entry) for entry in molecular_tag_specs]
 
-if options.gzip_input or re.search(".gz$", sys.argv[1]):
-    first_in = gzip.open(sys.argv[1], 'rb')
-else:
-    first_in = open(sys.argv[1], 'r')
-
-if options.gzip_input or re.search(".gz$", sys.argv[2]):
-    second_in = gzip.open(sys.argv[2], 'rb')
-else:
-    second_in = open(sys.argv[2], 'r')
+# open files
+first_in = open_file(sys.argv[1])
+second_in = open_file(sys.argv[2])
+if options.index_file:
+    i_in = open_file(options.index_file)
 
 if options.output_prefix:
     first_outfq = options.output_prefix + ".r1.indexed.fq"
@@ -74,14 +78,6 @@ if options.output_prefix:
 else:
     first_outfq = sys.argv[1] + ".r1.indexed.fq"
     second_outfq = sys.argv[2] + ".r2.indexed.fq"
-
-if options.index_file:
-    if options.gzip_input or re.search(".gz$", options.index_file):
-        i_in = gzip.open(options.index_file, 'rb')
-    else:
-        i_in = open(options.index_file, 'rb')
-else:
-    i_in = None
 
 # MAIN LOOP
 
