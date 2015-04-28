@@ -5,12 +5,15 @@ import sys
 import re
 from subprocess import Popen, PIPE
 from optparse import OptionParser
+from distutils import spawn
 
+# for MacOS compatability
+ZCAT_BINARY=spawn.find_executable("zcat") or spawn.find_executable("gzcat")
 
 def fastq_reader(filename):
     """Yields a read from a fastq file, optionally gzipped"""
     if options.gzip_input or re.search(".gz$", filename):
-        f = Popen('gzcat ' + filename, shell=True, stdout=PIPE).stdout
+        f = Popen(ZCAT_BINARY + ' ' + filename, shell=True, stdout=PIPE).stdout
     else:
         f = open(filename, 'r')
     for line in f:
