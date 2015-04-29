@@ -99,8 +99,9 @@ samtools view -h $TMP/$OUTPREFIX.barcoded.indexed.sort.bam \
         $BARCODES
 
 # COPY OUT FINAL
-echo `date` ": Saving results to $FINAL_DEST_DIR"
-rsync -arv $TMP/$OUTPREFIX.barcoded.indexed.sort.bam $FINAL_DEST_DIR
+echo `date` ": Saving results to $FINAL_DEST_DIR/$OUTPREFIX"
+mkdir -p $FINAL_DEST_DIR/$OUTPREFIX
+rsync -arv $TMP/$OUTPREFIX.barcoded.indexed.sort.* $FINAL_DEST_DIR/$OUTPREFIX/
 
 # cleaning up
 rm -rf $TMP
