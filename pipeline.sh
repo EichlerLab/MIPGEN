@@ -19,7 +19,7 @@ READ_3=${FASTQ_FOLDER}/s_${LANE}_3.fq.gz
 BARCODE_LENGTH=8
 MOLECULAR_TAG_SIZES="0,5"
 MIP_KEY=/net/eichler/vol20/projects/ASD3/nobackups/ASD3_mip_key.txt
-
+LOCK_FILE=/net/eichler/vol20/projects/ASD3/nobackups/_lockfile
 FINAL_DEST_DIR=/net/eichler/vol20/projects/ASD3/nobackups/analysis_complete
 
 MIPGEN=/net/eichler/vol20/projects/ASD3/nobackups/nkrumm/MIPGEN/
@@ -28,6 +28,17 @@ THREADS=6
 
 # TEMP DIR SETUP
 TMP=$(mktemp -d)
+
+LOCK_COUNT=$(cat $LOCK_FILE)
+
+while [[ LOCK_COUNT > 4 ]]; do
+    echo "Waiting for rsync lock;"
+    sleep $(( ( RANDOM % 100 )  + 60 ))  # wait a randomish amount of time
+    LOCK_COUNT=$(cat $LOCK_FILE)
+done
+
+LOCK_COUNT=$((LOCK_COUNT+1))
+echo $LOCK_COUNT > $LOCK_FILE
 
 # COPY SOURCE to $TMP
 rsync -arv $BWA_INDEX_SOURCE* $TMP
@@ -42,6 +53,11 @@ rsync $READ_3 $TMP
 READ_1_TMP=$TMP/`basename $READ_1`
 READ_2_TMP=$TMP/`basename $READ_2`
 READ_3_TMP=$TMP/`basename $READ_3`
+
+LOCK_COUNT=$(cat $LOCK_FILE)
+LOCK_COUNT=$((LOCK_COUNT-1))
+echo $LOCK_COUNT > $LOCK_FILE
+
 
 # MODULES
 module load bwa/0.7.3 samtools/0.1.19 python/2.7.3 numpy/1.7.0 scipy/0.12.0b1 pear/0.9.5
