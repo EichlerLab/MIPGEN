@@ -31,7 +31,7 @@ TMP=$(mktemp -d)
 
 LOCK_COUNT=$(cat $LOCK_FILE)
 
-while [[ LOCK_COUNT > 4 ]]; do
+while (( $LOCK_COUNT > 3 )); do
     echo "Waiting for rsync lock;"
     sleep $(( ( RANDOM % 100 )  + 60 ))  # wait a randomish amount of time
     LOCK_COUNT=$(cat $LOCK_FILE)
