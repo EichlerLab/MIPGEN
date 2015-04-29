@@ -117,12 +117,16 @@ with open(outfq, 'w') as out:
             if options.molecular_tag:
                 tag_in_header = re.search("#[ATGCN]+-[ATGCN]+$", block[0])
 
-        if options.molecular_tag and not tag_in_header:
-            tag = block[1][:molecular_tag_specs[0]] \
-                + block[1][len(block[1]) - molecular_tag_specs[1] - 1: -1]
-            block[0] += "-" + tag
-            block[1] = block[1][molecular_tag_specs[0]:len(block[1]) - 1 - molecular_tag_specs[1]]
-            block[3] = block[3][molecular_tag_specs[0]:len(block[3]) - 1 - molecular_tag_specs[1]]
+        if options.molecular_tag:
+            if not tag_in_header:
+                tag = block[1][:molecular_tag_specs[0]] \
+                    + block[1][len(block[1]) - molecular_tag_specs[1] - 1: -1]
+                block[0] += "-" + tag
+                block[1] = block[1][molecular_tag_specs[0]:len(block[1]) - 1 - molecular_tag_specs[1]]
+                block[3] = block[3][molecular_tag_specs[0]:len(block[3]) - 1 - molecular_tag_specs[1]]
+            else:
+                # tag already present
+                pass
 
         if options.truncated_read_length:
             block[1] = block[1][:options.truncated_read_length]
