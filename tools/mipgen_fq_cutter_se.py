@@ -110,7 +110,7 @@ with open(outfq, 'w') as out:
             continue
 
         if options.index_file is None and barcode_in_header:
-            pass
+            tag_in_header = None
         else:
             block[0] += "#" + barcode
             block[0] = block[0].replace(" ", "_")
