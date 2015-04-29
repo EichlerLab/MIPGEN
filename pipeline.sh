@@ -20,10 +20,10 @@ BARCODE_LENGTH=8
 MOLECULAR_TAG_SIZES="0,5"
 MIP_KEY=/net/eichler/vol20/projects/ASD3/nobackups/ASD3_mip_key.txt
 LOCK_FILE=/net/eichler/vol20/projects/ASD3/nobackups/_lockfile
-FINAL_DEST_DIR=/net/eichler/vol20/projects/ASD3/nobackups/analysis_complete
+FINAL_DEST_DIR=/net/eichler/vol20/projects/ASD3/nobackups/analysis_complete_nkrumm
 
 MIPGEN=/net/eichler/vol20/projects/ASD3/nobackups/nkrumm/MIPGEN/
-BWA_INDEX_SOURCE=/net/eichler/vol3/home/bcoe/hg19/hg19_masked_arhgap11b_numeric.fa
+BWA_INDEX_SOURCE=/net/eichler/vol20/projects/ASD3/nobackups/nkrumm/hg19_index/hg19_masked_arhgap11b_numeric.fa
 THREADS=6
 
 # TEMP DIR SETUP
