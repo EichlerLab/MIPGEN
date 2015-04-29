@@ -1,22 +1,26 @@
 #!/bin/bash
-echo `date` ": Starting..."
+set -e
 
-# MODULES
-module load bwa/0.7.3 samtools/0.1.19 python/2.7.3 numpy/1.7.0 scipy/0.12.0b1 pear/0.9.5
+echo `date` ": Starting..."
 
 ## OPTIONS AND DIRECTORIES
 
-READ_1=/net/eichler/vol20/projects/ASD3/backups/fastq/130411_SN711_0331_BD200HACXX/s_5_1.fq.gz
-READ_2=/net/eichler/vol20/projects/ASD3/backups/fastq/130411_SN711_0331_BD200HACXX/s_5_2.fq.gz
-READ_3=/net/eichler/vol20/projects/ASD3/backups/fastq/130411_SN711_0331_BD200HACXX/s_5_3.fq.gz
+# FASTQ_FOLDER=$1
+# FLOWCELL=$2
+# LANE=$3
+# BARCODES=$4
+OUTPREFIX=${FLOWCELL}_${LANE}
 
-BARCODES=/net/eichler/vol20/projects/ASD3/nobackups/BD200HACXX_lane5.txt
+READ_1=${FASTQ_FOLDER}/s_${LANE}_1.fq.gz
+READ_2=${FASTQ_FOLDER}/s_${LANE}_2.fq.gz
+READ_3=${FASTQ_FOLDER}/s_${LANE}_3.fq.gz
+
+
 BARCODE_LENGTH=8
 MOLECULAR_TAG_SIZES="0,5"
 MIP_KEY=/net/eichler/vol20/projects/ASD3/nobackups/ASD3_mip_key.txt
-OUTPREFIX=SSCP01_SSCP25
 
-FINAL_DEST_DIR=/net/eichler/vol20/projects/ASD3/nobackups/nkrumm
+FINAL_DEST_DIR=/net/eichler/vol20/projects/ASD3/nobackups/analysis_complete
 
 MIPGEN=/net/eichler/vol20/projects/ASD3/nobackups/nkrumm/MIPGEN/
 BWA_INDEX_SOURCE=/net/eichler/vol3/home/bcoe/hg19/hg19_masked_arhgap11b_numeric.fa
@@ -26,7 +30,7 @@ THREADS=6
 TMP=$(mktemp -d)
 
 # COPY SOURCE to $TMP
-rsync -arv --bwlimit=15000 $BWA_INDEX_SOURCE* $TMP
+rsync -arv $BWA_INDEX_SOURCE* $TMP
 
 
 echo `date` ": Copying read FASTQ data to local temp directory $TMP)"
@@ -39,7 +43,11 @@ READ_1_TMP=$TMP/`basename $READ_1`
 READ_2_TMP=$TMP/`basename $READ_2`
 READ_3_TMP=$TMP/`basename $READ_3`
 
+# MODULES
+module load bwa/0.7.3 samtools/0.1.19 python/2.7.3 numpy/1.7.0 scipy/0.12.0b1 pear/0.9.5
+
 # SCRIPT
+
 echo `date` ": Running mipgen_fq_cutter_pe.py..."
 python $MIPGEN/tools/mipgen_fq_cutter_pe.py \
     $READ_1_TMP $READ_3_TMP -i $READ_2_TMP \
@@ -77,4 +85,6 @@ samtools view -h $TMP/$OUTPREFIX.barcoded.indexed.sort.bam \
 echo `date` ": Saving results to $FINAL_DEST_DIR"
 rsync -arv $TMP/$OUTPREFIX.barcoded.indexed.sort.bam $FINAL_DEST_DIR
 
+# cleaning up
+rm -rf $TMP
 echo `date` ": Done."
