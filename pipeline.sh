@@ -56,7 +56,8 @@ python $MIPGEN/tools/mipgen_fq_cutter_pe.py \
     -o $TMP/$OUTPREFIX.barcoded
 
 echo `date` ": Running pear..."
-pear -f $TMP/$OUTPREFIX.barcoded.r1.indexed.fq \
+pear --threads $THREADS --memory 4G \
+    -f $TMP/$OUTPREFIX.barcoded.r1.indexed.fq \
     -r $TMP/$OUTPREFIX.barcoded.r2.indexed.fq \
     -o $TMP/$OUTPREFIX.barcoded
 
