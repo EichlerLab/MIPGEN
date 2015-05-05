@@ -13,8 +13,11 @@ OUTPREFIX=${FLOWCELL}_${LANE}
 
 READ_1=${FASTQ_FOLDER}/s_${LANE}_1.fq.gz
 READ_2=${FASTQ_FOLDER}/s_${LANE}_2.fq.gz
-READ_3=${FASTQ_FOLDER}/s_${LANE}_3.fq.gz
-
+if [[ $DUAL_INDEX == "1" ]]; then 
+    READ_3=${FASTQ_FOLDER}/s_${LANE}_4.fq.gz
+else
+    READ_3=${FASTQ_FOLDER}/s_${LANE}_3.fq.gz
+fi
 
 BARCODE_LENGTH=8
 MOLECULAR_TAG_SIZES="0,5"
